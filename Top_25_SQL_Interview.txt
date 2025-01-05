@@ -397,6 +397,10 @@ FROM
      LIMIT 2 - (SELECT COUNT(*) FROM employees) % 2   OFFSET (SELECT (COUNT(*) - 1) / 2 FROM employees)) AS median;
 
 
+L. FETCH ALL SERS WHO LOGGED IN CONSECTIVELY FOR 3 DAYS OR MORE?
+
+=>
+
 
  
 
