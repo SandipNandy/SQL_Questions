@@ -1,0 +1,407 @@
+A. How do you retrieve only duplicate records from a table?
+
+=> SELECT column1, clomn2, COUNT(*) FROM my_table GROUP BY column1, column2 HAVING COUNT(*) >1;
+
+
+If yo need the fll duplicate Rows -
+
+If you ant to retrieve all colmns for the duplicate rows, you can use a Common Table Expression(CTE) or a subquery:
+
+WITH duplicates AS (
+
+SELECT column1, column2
+FROM my_table
+GROUP BY colmn1, column2
+HAVING COUNT(*) > 1
+
+)
+SELECT t.*
+FROM my_table t
+JOIN duplicates d
+ON t.column1=d.colmn1 AND t.column2=d.column2;
+
+
+B. Write a query to calculate the rnning total of sales by date?
+
+=> SELECT 
+    sale_date,
+    amount,
+    SUM(amount) OVER (ORDER BY sale_date, sale_id) AS running_total
+FROM sales
+ORDER BY sale_date;
+
+
+C. Find employees who earn more than the average salary in their department?
+
+=> 
+1. Approach 1 :- 
+SELECT 
+    employee_id,
+    name,
+    department_id,
+    salary
+FROM 
+    employees
+WHERE 
+    salary > (
+        SELECT AVG(salary)
+        FROM employees AS dept_avg
+        WHERE dept_avg.department_id = employees.department_id
+    );
+
+
+
+2. Approach 2 :- 
+
+SELECT 
+    employee_id,
+    name,
+    department_id,
+    salary
+FROM (
+    SELECT 
+        employee_id,
+        name,
+        department_id,
+        salary,
+        AVG(salary) OVER (PARTITION BY department_id) AS avg_department_salary
+    FROM employees
+) AS subquery
+WHERE salary > avg_department_salary;
+
+
+D. Write a query to find the most frequently occuring value in a column?
+
+=> 
+A. Example Query 
+
+SELECT 
+    my_column,
+    COUNT(*) AS frequency
+FROM 
+    my_table
+GROUP BY 
+    my_column
+ORDER BY 
+    frequency DESC
+LIMIT 1;
+
+
+
+B. Handling Ties -
+
+WITH frequencies AS (
+    SELECT 
+        my_column,
+        COUNT(*) AS frequency
+    FROM 
+        my_table
+    GROUP BY 
+        my_column
+)
+SELECT 
+    my_column,
+    frequency
+FROM 
+    frequencies
+WHERE 
+    frequency = (
+        SELECT MAX(frequency) FROM frequencies
+    );
+
+
+
+D. Fetch records where the date is within the last 7 days from today?
+
+=> 
+GAeneric SQL -
+
+SELECT *
+FROM table_name
+WHERE date_column BETWEEN CURRENT_DATE - INTERVAL 7 DAY AND CURRENT_DATE;
+
+MYSQL-
+
+SELECT *
+FROM table_name
+WHERE date_column >= CURDATE() - INTERVAL 7 DAY;
+
+E. Write a query to count how many employees share the same salary?
+
+=>
+
+SELECT 
+    salary,
+    COUNT(*) AS employee_count
+FROM 
+    employees
+GROUP BY 
+    salary
+HAVING 
+    COUNT(*) > 1; 
+
+-- Optional: To show only salaries shared by multiple employees
+
+
+>> If you want to include all salaries (even those with just one employee), remove the HAVING clause:
+
+SELECT 
+    salary,
+    COUNT(*) AS employee_count
+FROM 
+    employees
+GROUP BY 
+    salary;
+
+
+F. How do you fetch the top 3 records for each group in a table ?
+
+=>
+
+USING 'ROW_NUMBER()' :
+
+SELECT 
+    department_id,
+    employee_id,
+    sales_amount
+FROM (
+    SELECT 
+        department_id,
+        employee_id,
+        sales_amount,
+        ROW_NUMBER() OVER (PARTITION BY department_id ORDER BY sales_amount DESC) AS row_num
+    FROM 
+        sales
+) AS ranked
+WHERE 
+    row_num <= 3
+ORDER BY 
+    department_id, row_num;
+
+
+
+If You Need to Handle Ties (Use RANK() Instead) :
+
+
+If multiple employees have the same sales_amount and you want to include all tied records, replace ROW_NUMBER() with RANK():
+
+SELECT 
+    department_id,
+    employee_id,
+    sales_amount
+FROM (
+    SELECT 
+        department_id,
+        employee_id,
+        sales_amount,
+        RANK() OVER (PARTITION BY department_id ORDER BY sales_amount DESC) AS rank_num
+    FROM 
+        sales
+) AS ranked
+WHERE 
+    rank_num <= 3
+ORDER BY 
+    department_id, rank_num;
+
+
+G. RETRIEVE PRODUCTS THAT WERE NEVER SOLD (HINT:- USE LEFT JOIN)
+
+=> 
+
+SELECT 
+    p.product_id,
+    p.product_name
+FROM 
+    products p
+LEFT JOIN 
+    sales s
+ON 
+    p.product_id = s.product_id
+WHERE 
+    s.product_id IS NULL;
+
+=====================================================================================================================================
+INTERMEDIATE LEVEL
+=====================================================================================================================================
+H. Retrieve customers who made their first prchase in the last 6 months?
+
+=>
+
+SELECT 
+    customer_id,
+    MIN(purchase_date) AS first_purchase_date
+FROM 
+    sales
+GROUP BY 
+    customer_id
+HAVING 
+    MIN(purchase_date) >= CURRENT_DATE - INTERVAL 6 MONTH;
+
+
+
+I. How do you pivot a table to convert rows into columns?
+
+=> 
+
+
+Suppose you have a table named sales with the following columns:
+
+product (e.g., Product A, Product B, etc.)
+month (e.g., January, February, etc.)
+sales_amount (e.g., sales figures).
+
+Input Table:
+
+product	         month	   sales_amount
+Product A	January	        100
+Product A	February	150
+Product B	January	        200
+Product B	February	250
+
+
+
+Option 1: Using the PIVOT Clause (For Databases Supporting It)
+SQL Query (e.g., SQL Server or Oracle):
+
+SELECT 
+    product,
+    [January] AS January,
+    [February] AS February
+FROM 
+    (SELECT product, month, sales_amount FROM sales) AS source_table
+PIVOT 
+    (SUM(sales_amount) FOR month IN ([January], [February])) AS pivot_table;
+
+
+
+Option 2: Using Conditional Aggregation (For Databases Without PIVOT)
+SQL Query (Works in MySQL, PostgreSQL, etc.):
+
+
+SELECT 
+    product,
+    SUM(CASE WHEN month = 'January' THEN sales_amount ELSE 0 END) AS January,
+    SUM(CASE WHEN month = 'February' THEN sales_amount ELSE 0 END) AS February
+FROM 
+    sales
+GROUP BY 
+    product;
+
+
+
+J. WRITE A QUERY TO CALCULATE THE PERCENTAGE CHANGE IN SALES MONTH-OVER-MONTH?
+
+=>
+Percentage Change=( Previous Month Sales-Current Month Sales/Previous Month Sales)×100
+
+Assuming you have a table sales with the following columns:
+
+sale_date (the date of the sale),
+sales_amount (the sales amount),
+month (can be extracted from sale_date).
+
+
+
+Option 1: Using Window Functions (Preferred in most modern databases)
+If your database supports window functions (e.g., PostgreSQL, MySQL 8.0+, SQL Server, Oracle), you can use LAG() to get the previous month's sales and calculate the percentage change.
+
+SELECT 
+    month,
+    sales_amount,
+    LAG(sales_amount) OVER (ORDER BY month) AS previous_month_sales,
+    CASE 
+        WHEN LAG(sales_amount) OVER (ORDER BY month) IS NULL THEN NULL
+        ELSE ((sales_amount - LAG(sales_amount) OVER (ORDER BY month)) / LAG(sales_amount) OVER (ORDER BY month)) * 100
+    END AS percentage_change
+FROM 
+    sales
+ORDER BY 
+    month;
+
+
+Option 2: Using Self-Join (For databases that don’t support window functions)
+If your database doesn't support window functions, you can use a self-join to join the table with itself based on the month.
+
+
+SELECT 
+    current_month.month,
+    current_month.sales_amount,
+    previous_month.sales_amount AS previous_month_sales,
+    CASE 
+        WHEN previous_month.sales_amount IS NULL THEN NULL
+        ELSE ((current_month.sales_amount - previous_month.sales_amount) / previous_month.sales_amount) * 100
+    END AS percentage_change
+FROM 
+    sales AS current_month
+LEFT JOIN 
+    sales AS previous_month
+ON 
+    current_month.month = DATE_ADD(previous_month.month, INTERVAL 1 MONTH)
+ORDER BY 
+    current_month.month;
+
+
+K. FIND THE MEDIAN SALARY OF EMPLOYEES IN A TABLE?
+
+=>
+
+Option 1: Using Window Functions (For databases supporting it)
+If your database supports window functions (like PostgreSQL, MySQL 8.0+, SQL Server, etc.), you can calculate the median salary by ordering the salaries and using ROW_NUMBER() or NTILE().
+
+SQL Query Using NTILE() (Works in PostgreSQL, SQL Server, etc.):
+
+WITH ranked_salaries AS (
+    SELECT 
+        salary,
+        NTILE(2) OVER (ORDER BY salary) AS ntile
+    FROM 
+        employees
+)
+SELECT 
+    AVG(salary) AS median_salary
+FROM 
+    ranked_salaries
+WHERE 
+    ntile = 1 OR ntile = 2;
+
+
+Option 2: Using ROW_NUMBER() (Works in most databases)
+If you cannot use NTILE(), you can calculate the median salary using ROW_NUMBER() to rank the salaries and find the middle value.
+
+WITH ranked_salaries AS (
+    SELECT 
+        salary,
+        ROW_NUMBER() OVER (ORDER BY salary) AS row_num,
+        COUNT(*) OVER () AS total_count
+    FROM 
+        employees
+)
+SELECT 
+    AVG(salary) AS median_salary
+FROM 
+    ranked_salaries
+WHERE 
+    row_num IN (total_count / 2, total_count / 2 + 1);
+
+
+Option 3: Using Subqueries (For older versions of MySQL and other databases)
+In databases that do not support window functions, you can use a subquery to find the median salary.
+
+
+SELECT 
+    AVG(salary) AS median_salary
+FROM 
+    (SELECT salary
+     FROM employees
+     ORDER BY salary
+     LIMIT 2 - (SELECT COUNT(*) FROM employees) % 2   OFFSET (SELECT (COUNT(*) - 1) / 2 FROM employees)) AS median;
+
+
+
+ 
+
+
+
+
+
+
