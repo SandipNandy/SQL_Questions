@@ -2,7 +2,6 @@ A. How do you retrieve only duplicate records from a table?
 
 => SELECT column1, clomn2, COUNT(*) FROM my_table GROUP BY column1, column2 HAVING COUNT(*) >1;
 
-
 If yo need the fll duplicate Rows -
 
 If you ant to retrieve all colmns for the duplicate rows, you can use a Common Table Expression(CTE) or a subquery:
